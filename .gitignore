@@ -1,0 +1,20 @@
+# ===== Terraform =====
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/terraform.tfstate
+terraform/terraform.tfstate.*
+
+# Terraform provider binaries (Windows)
+terraform/terraform-provider-*
+
+# Lambda build artifacts
+terraform/*.zip
+
+# ===== IDE =====
+.idea/
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+

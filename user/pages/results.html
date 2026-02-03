@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kết quả bầu cử - BrightVote</title>
+    <meta name="description" content="Xem kết quả bầu cử và thống kê chi tiết về các ứng cử viên.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/results.css">
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-container">
+            <a href="../index.html" class="logo">
+                <div class="logo-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path
+                            d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
+                            fill="white" />
+                    </svg>
+                </div>
+                <span class="logo-text">BrightVote</span>
+            </a>
+
+            <nav class="nav-menu">
+                <a href="../index.html" class="nav-link">Bầu cử</a>
+                <a href="results.html" class="nav-link active">Kết quả</a>
+            </nav>
+
+            <div class="auth-buttons">
+                <button class="btn btn-outline">Login</button>
+                <button class="btn btn-primary">Sign Up</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="results-main">
+        <h1 class="results-title">Kết quả bầu cử</h1>
+
+        <!-- Stats and Filters Row -->
+        <section class="stats-filters-section">
+            <!-- Stats Card -->
+            <div class="stats-card">
+                <h2 class="stats-heading">Thống kê tổng thể</h2>
+
+                <div class="stat-row">
+                    <span class="stat-label">Tổng số phiếu bầu:</span>
+                    <span class="stat-value" id="totalVotes">124,567</span>
+                </div>
+
+                <div class="stat-row">
+                    <span class="stat-label">Ứng cử viên hàng đầu:</span>
+                    <span class="stat-value highlight" id="topCandidate">Mai Hoa</span>
+                </div>
+
+                <div class="stat-row">
+                    <span class="stat-label">Tỷ lệ tham gia:</span>
+                    <span class="stat-value success" id="participationRate">65.2%</span>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="filters-card">
+                <div class="filter-group">
+                    <div class="filter-label">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <circle cx="12" cy="12" r="10" />
+                            <polyline points="12,6 12,12 16,14" />
+                        </svg>
+                        <span>Thời gian:</span>
+                    </div>
+                    <div class="filter-options" id="timeFilters">
+                        <button class="filter-btn active" data-filter="today">Hôm nay</button>
+                        <button class="filter-btn" data-filter="week">Tuần này</button>
+                        <button class="filter-btn" data-filter="month">Tháng này</button>
+                        <button class="filter-btn" data-filter="all">Tất cả</button>
+                    </div>
+                </div>
+
+                <div class="filter-group">
+                    <div class="filter-label">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="4" y1="21" x2="4" y2="14" />
+                            <line x1="4" y1="10" x2="4" y2="3" />
+                            <line x1="12" y1="21" x2="12" y2="12" />
+                            <line x1="12" y1="8" x2="12" y2="3" />
+                            <line x1="20" y1="21" x2="20" y2="16" />
+                            <line x1="20" y1="12" x2="20" y2="3" />
+                        </svg>
+                        <span>Thể loại:</span>
+                    </div>
+                    <div class="filter-options" id="categoryFilters">
+                        <button class="filter-btn" data-filter="chinhtri">Chính trị</button>
+                        <button class="filter-btn" data-filter="giaitri">Giải trí</button>
+                        <button class="filter-btn" data-filter="giaoduc">Giáo dục</button>
+                        <button class="filter-btn" data-filter="congnghe">Công nghệ</button>
+                        <button class="filter-btn active" data-filter="all">Tất cả</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Rankings Section -->
+        <section class="rankings-section">
+            <div class="rankings-card">
+                <h2 class="rankings-heading">Bảng xếp hạng ứng cử viên</h2>
+
+                <div class="rankings-list" id="rankingsList">
+                    <!-- Rankings will be loaded via JavaScript -->
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <p class="copyright">© 2026 BrightVote. All rights reserved.</p>
+            <div class="social-links">
+                <a href="#" class="social-link" aria-label="Facebook">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+                    </svg>
+                </a>
+                <a href="#" class="social-link" aria-label="Twitter">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path
+                            d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z" />
+                    </svg>
+                </a>
+                <a href="#" class="social-link" aria-label="Instagram">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <rect x="2" y="2" width="20" height="20" rx="5" ry="5" fill="none" stroke="currentColor"
+                            stroke-width="2" />
+                        <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" fill="none" stroke="currentColor"
+                            stroke-width="2" />
+                        <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" />
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </footer>
+
+    <script src="../js/results.js"></script>
+</body>
+
+</html>
