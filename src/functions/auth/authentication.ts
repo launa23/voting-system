@@ -5,7 +5,8 @@
  * THIS IS A THIN HANDLER - Business logic is in AuthService
  */
 
-import { authService } from "../../core/services/AuthService.mjs";
+import { APIGatewayProxyEvent, APIGatewayProxyResult } from "../../core/models/types.js";
+import { authService } from "../../core/services/AuthService.js";
 import { 
   successResponse, 
   errorResponse, 
@@ -13,20 +14,26 @@ import {
   parseBody,
   getHttpMethod,
   ValidationError,
-  UnauthorizedError,
-  NotFoundError
-} from "../../shared/utils/response.mjs";
-import { HTTP_STATUS } from "../../shared/utils/constants.mjs";
+  UnauthorizedError
+} from "../../shared/utils/response.js";
+import { HTTP_STATUS } from "../../shared/utils/constants.js";
 
-export const handler = async (event) => {
+interface AuthBody {
+  email: string;
+  password: string;
+  name?: string;
+  confirmationCode?: string;
+}
+
+export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   try {
     // Handle CORS preflight
     if (getHttpMethod(event) === 'OPTIONS') {
       return corsResponse();
     }
 
-    const body = parseBody(event);
-    const path = event.rawPath || event.path;
+    const body = parseBody<AuthBody>(event);
+    const path = event.path;
     
     // Route to appropriate service method
     if (path.includes('/login')) {
@@ -40,7 +47,7 @@ export const handler = async (event) => {
     } 
     
     if (path.includes('/confirm')) {
-      const result = await authService.confirmSignup(body.email, body.confirmationCode);
+      const result = await authService.confirmSignup(body.email, body.confirmationCode!);
       return successResponse(HTTP_STATUS.OK, result);
     }
     
@@ -57,6 +64,6 @@ export const handler = async (event) => {
       return errorResponse(HTTP_STATUS.UNAUTHORIZED, error);
     }
     
-    return errorResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, error);
+    return errorResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, error as Error);
   }
 };

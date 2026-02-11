@@ -3,17 +3,20 @@
  * Business logic for voting operations
  */
 
-import { voteRepository } from "../repositories/VoteRepository.mjs";
-import { ValidationError, ConflictError } from "../../shared/utils/response.mjs";
+import { voteRepository } from "../repositories/VoteRepository.js";
+import { ValidationError, ConflictError } from "../../shared/utils/response.js";
+import { SQSRecord, BatchItemFailure } from "../models/types.js";
+
+interface VoteProcessResult {
+  success: boolean;
+  message: string;
+}
 
 export class VoteService {
   /**
    * Process a vote
-   * @param {string} userId 
-   * @param {string} candidateId 
-   * @returns {Promise<{success: boolean, message: string}>}
    */
-  async processVote(userId, candidateId) {
+  async processVote(userId: string, candidateId: string): Promise<VoteProcessResult> {
     // Validate input
     if (!userId || !candidateId) {
       throw new ValidationError('userId and candidateId are required');
@@ -27,7 +30,7 @@ export class VoteService {
         message: `Vote processed successfully for candidate ${candidateId}`
       };
     } catch (error) {
-      if (error.name === 'TransactionCanceledException') {
+      if ((error as { name?: string }).name === 'TransactionCanceledException') {
         // User has already voted
         throw new ConflictError('User has already voted');
       }
@@ -37,11 +40,9 @@ export class VoteService {
 
   /**
    * Process batch of votes from SQS
-   * @param {Array} records - SQS records
-   * @returns {Promise<Array>} - List of failed message IDs
    */
-  async processBatchVotes(records) {
-    const batchItemFailures = [];
+  async processBatchVotes(records: SQSRecord[]): Promise<BatchItemFailure[]> {
+    const batchItemFailures: BatchItemFailure[] = [];
 
     const promises = records.map(async (record) => {
       try {
@@ -58,7 +59,8 @@ export class VoteService {
         console.log(`Successfully processed vote: ${userId} -> ${candidateId}`);
 
       } catch (err) {
-        if (err.name === 'TransactionCanceledException') {
+        const error = err as { name?: string };
+        if (error.name === 'TransactionCanceledException') {
           // Duplicate vote - ignore silently (don't retry)
           console.log(`Duplicate vote ignored for user: ${JSON.parse(record.body).userId}`);
         } else {

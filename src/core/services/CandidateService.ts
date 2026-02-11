@@ -3,21 +3,34 @@
  * Business logic for candidate operations
  */
 
-import { candidateRepository } from "../repositories/CandidateRepository.mjs";
-import { ValidationError, NotFoundError } from "../../shared/utils/response.mjs";
-import { CACHE_CONFIG } from "../../shared/utils/constants.mjs";
+import { candidateRepository } from "../repositories/CandidateRepository.js";
+import { ValidationError, NotFoundError } from "../../shared/utils/response.js";
+import { CACHE_CONFIG } from "../../shared/utils/constants.js";
+import { Candidate } from "../models/types.js";
 
 // In-memory cache
-let candidatesCache = null;
+let candidatesCache: Candidate[] | null = null;
 let cacheTimestamp = 0;
+
+interface CandidateCreateData {
+  name: string;
+  description?: string;
+  imageUrl?: string;
+}
+
+interface CandidateUpdateData {
+  name?: string;
+  description?: string;
+  imageUrl?: string;
+  CandidateId?: string;
+  createdAt?: string;
+}
 
 export class CandidateService {
   /**
    * Get all candidates with their vote counts
-   * @param {boolean} useCache - Whether to use cache
-   * @returns {Promise<Array>}
    */
-  async getAllCandidates(useCache = true) {
+  async getAllCandidates(useCache = true): Promise<Candidate[]> {
     const now = Date.now();
     
     // Return cached data if valid
@@ -35,13 +48,13 @@ export class CandidateService {
     ]);
     
     // Create vote count map
-    const votesMap = {};
+    const votesMap: Record<string, number> = {};
     voteResults.forEach(item => {
       votesMap[item.CandidateId] = item.votes || 0;
     });
     
     // Merge candidates with vote counts
-    const candidatesWithVotes = candidates.map(candidate => ({
+    const candidatesWithVotes: Candidate[] = candidates.map(candidate => ({
       ...candidate,
       votes: votesMap[candidate.CandidateId] || 0
     }));
@@ -55,10 +68,8 @@ export class CandidateService {
 
   /**
    * Get a single candidate by ID
-   * @param {string} candidateId 
-   * @returns {Promise<Object>}
    */
-  async getCandidateById(candidateId) {
+  async getCandidateById(candidateId: string): Promise<Candidate> {
     const [candidate, voteCount] = await Promise.all([
       candidateRepository.getCandidateById(candidateId),
       candidateRepository.getVoteCount(candidateId)
@@ -76,10 +87,8 @@ export class CandidateService {
 
   /**
    * Create a new candidate
-   * @param {Object} candidateData 
-   * @returns {Promise<Object>}
    */
-  async createCandidate(candidateData) {
+  async createCandidate(candidateData: CandidateCreateData): Promise<Omit<Candidate, 'votes'>> {
     const { name, description, imageUrl } = candidateData;
     
     if (!name) {
@@ -104,11 +113,11 @@ export class CandidateService {
 
   /**
    * Update an existing candidate
-   * @param {string} candidateId 
-   * @param {Object} updates 
-   * @returns {Promise<Object>}
    */
-  async updateCandidate(candidateId, updates) {
+  async updateCandidate(
+    candidateId: string, 
+    updates: CandidateUpdateData
+  ): Promise<Omit<Candidate, 'votes'>> {
     // Validate candidate exists
     const existing = await candidateRepository.getCandidateById(candidateId);
     if (!existing) {
@@ -122,9 +131,12 @@ export class CandidateService {
       throw new ValidationError('No valid fields to update');
     }
     
-    validUpdates.updatedAt = new Date().toISOString();
+    const updatesWithTimestamp = {
+      ...validUpdates,
+      updatedAt: new Date().toISOString()
+    };
     
-    const updated = await candidateRepository.updateCandidate(candidateId, validUpdates);
+    const updated = await candidateRepository.updateCandidate(candidateId, updatesWithTimestamp);
     
     // Invalidate cache
     this.invalidateCache();
@@ -134,9 +146,8 @@ export class CandidateService {
 
   /**
    * Delete a candidate
-   * @param {string} candidateId 
    */
-  async deleteCandidate(candidateId) {
+  async deleteCandidate(candidateId: string): Promise<void> {
     // Validate candidate exists
     const existing = await candidateRepository.getCandidateById(candidateId);
     if (!existing) {
@@ -152,7 +163,7 @@ export class CandidateService {
   /**
    * Invalidate cache
    */
-  invalidateCache() {
+  invalidateCache(): void {
     candidatesCache = null;
     cacheTimestamp = 0;
   }

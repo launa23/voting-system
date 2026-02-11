@@ -5,7 +5,8 @@
 
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, TransactWriteCommand, GetCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";
-import { TABLE_NAMES, SHARD_CONFIG } from "../../shared/utils/constants.mjs";
+import { TABLE_NAMES, SHARD_CONFIG } from "../../shared/utils/constants.js";
+import { VoteResult } from "../models/types.js";
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
@@ -13,21 +14,16 @@ const docClient = DynamoDBDocumentClient.from(client);
 export class VoteRepository {
   /**
    * Get a random shard ID for write distribution
-   * @param {string} candidateId 
-   * @returns {number} Shard ID (0 to VOTE_SHARD_COUNT-1)
    */
-  getShardId(candidateId) {
+  getShardId(_candidateId: string): number {
     // Random shard for better distribution
     return Math.floor(Math.random() * SHARD_CONFIG.VOTE_SHARD_COUNT);
   }
 
   /**
    * Process a vote using DynamoDB transaction with write sharding
-   * @param {string} userId 
-   * @param {string} candidateId 
-   * @throws {Error} If transaction fails
    */
-  async processVote(userId, candidateId) {
+  async processVote(userId: string, candidateId: string): Promise<void> {
     const shardId = this.getShardId(candidateId);
     const shardedKey = `${candidateId}#SHARD_${shardId}`;
 
@@ -61,10 +57,8 @@ export class VoteRepository {
 
   /**
    * Get aggregated vote count for a candidate from all shards
-   * @param {string} candidateId 
-   * @returns {Promise<number>} Total vote count
    */
-  async getVoteCount(candidateId) {
+  async getVoteCount(candidateId: string): Promise<number> {
     let totalVotes = 0;
 
     // Query all shards in parallel
@@ -84,7 +78,7 @@ export class VoteRepository {
     // Aggregate votes from all shards
     for (const result of results) {
       if (result.Item) {
-        totalVotes += result.Item.votes || 0;
+        totalVotes += (result.Item.votes as number) || 0;
       }
     }
 
@@ -93,21 +87,20 @@ export class VoteRepository {
 
   /**
    * Get all vote results aggregated by candidate
-   * @returns {Promise<Array>} Array of {candidateId, votes}
    */
-  async getAllVoteResults() {
+  async getAllVoteResults(): Promise<VoteResult[]> {
     // Scan all items from VoteResults table
     const { Items = [] } = await docClient.send(new ScanCommand({
       TableName: TABLE_NAMES.VOTE_RESULTS
     }));
 
     // Group by base candidate ID and aggregate
-    const voteMap = new Map();
+    const voteMap = new Map<string, number>();
     
     for (const item of Items) {
-      const baseCandidateId = item.baseCandidateId || item.CandidateId.split('#')[0];
+      const baseCandidateId = (item.baseCandidateId as string) || (item.CandidateId as string).split('#')[0];
       const currentVotes = voteMap.get(baseCandidateId) || 0;
-      voteMap.set(baseCandidateId, currentVotes + (item.votes || 0));
+      voteMap.set(baseCandidateId, currentVotes + ((item.votes as number) || 0));
     }
 
     // Convert to array format matching original structure
@@ -119,10 +112,8 @@ export class VoteRepository {
 
   /**
    * Check if user has already voted
-   * @param {string} userId 
-   * @returns {Promise<boolean>}
    */
-  async hasUserVoted(userId) {
+  async hasUserVoted(_userId: string): Promise<boolean> {
     // This check is implicit in processVote transaction
     // Can be implemented separately if needed for read-only checks
     return false;

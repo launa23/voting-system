@@ -109,15 +109,22 @@ resource "aws_cloudfront_distribution" "candidates_cache" {
 # 3. Lambda để update S3 cache
 # ------------------------------------------------------------------------------
 
+# Tạo zip file cho Lambda function
+data "archive_file" "update_cache_zip" {
+  type        = "zip"
+  source_file = "${path.module}/../lambda/update-candidates-cache.mjs"
+  output_path = "${path.module}/update-cache.zip"
+}
+
 resource "aws_lambda_function" "update_cache" {
-  filename         = "update-cache.zip"
+  filename         = data.archive_file.update_cache_zip.output_path
   function_name    = "UpdateCandidatesCache"
   role            = aws_iam_role.lambda_role.arn
   handler         = "update-candidates-cache.handler"
   runtime         = "nodejs20.x"
   timeout         = 60
   memory_size     = 512
-  source_code_hash = filebase64sha256("update-cache.zip")
+  source_code_hash = data.archive_file.update_cache_zip.output_base64sha256
 
   environment {
     variables = {

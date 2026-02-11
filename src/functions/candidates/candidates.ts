@@ -5,7 +5,8 @@
  * THIS IS A THIN HANDLER - Business logic is in CandidateService
  */
 
-import { candidateService } from "../../core/services/CandidateService.mjs";
+import { APIGatewayProxyEvent, APIGatewayProxyResult } from "../../core/models/types.js";
+import { candidateService } from "../../core/services/CandidateService.js";
 import {
   successResponse,
   errorResponse,
@@ -14,10 +15,10 @@ import {
   parseBody,
   ValidationError,
   NotFoundError
-} from "../../shared/utils/response.mjs";
-import { HTTP_STATUS, HTTP_METHODS } from "../../shared/utils/constants.mjs";
+} from "../../shared/utils/response.js";
+import { HTTP_STATUS, HTTP_METHODS } from "../../shared/utils/constants.js";
 
-export const handler = async (event) => {
+export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   try {
     const httpMethod = getHttpMethod(event);
     const pathParameters = getPathParameters(event);
@@ -38,20 +39,22 @@ export const handler = async (event) => {
           "public, max-age=5" // 5 second cache
         );
         
-      case HTTP_METHODS.POST:
+      case HTTP_METHODS.POST: {
         // POST /candidates
-        const body = parseBody(event);
+        const body = parseBody<{ name: string; description?: string; imageUrl?: string }>(event);
         const newCandidate = await candidateService.createCandidate(body);
         return successResponse(HTTP_STATUS.CREATED, newCandidate);
+      }
         
-      case HTTP_METHODS.PUT:
+      case HTTP_METHODS.PUT: {
         // PUT /candidates/{id}
         if (!pathParameters?.id) {
           throw new ValidationError('Candidate ID is required');
         }
-        const updates = parseBody(event);
+        const updates = parseBody<{ name?: string; description?: string; imageUrl?: string }>(event);
         const updated = await candidateService.updateCandidate(pathParameters.id, updates);
         return successResponse(HTTP_STATUS.OK, updated);
+      }
         
       case HTTP_METHODS.DELETE:
         // DELETE /candidates/{id}
@@ -80,6 +83,6 @@ export const handler = async (event) => {
       return errorResponse(HTTP_STATUS.NOT_FOUND, error);
     }
     
-    return errorResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, error);
+    return errorResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, error as Error);
   }
 };

@@ -5,7 +5,8 @@
  * THIS IS A THIN HANDLER - Business logic is in AuthService
  */
 
-import { authService } from "../../core/services/AuthService.mjs";
+import { APIGatewayProxyEvent, APIGatewayProxyResult } from "../../core/models/types.js";
+import { authService } from "../../core/services/AuthService.js";
 import {
   successResponse,
   errorResponse,
@@ -14,10 +15,10 @@ import {
   getAuthToken,
   UnauthorizedError,
   NotFoundError
-} from "../../shared/utils/response.mjs";
-import { HTTP_STATUS, HTTP_METHODS } from "../../shared/utils/constants.mjs";
+} from "../../shared/utils/response.js";
+import { HTTP_STATUS, HTTP_METHODS } from "../../shared/utils/constants.js";
 
-export const handler = async (event) => {
+export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   try {
     // Handle CORS preflight
     if (getHttpMethod(event) === HTTP_METHODS.OPTIONS) {
@@ -47,6 +48,6 @@ export const handler = async (event) => {
       return errorResponse(HTTP_STATUS.NOT_FOUND, error);
     }
     
-    return errorResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, error);
+    return errorResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, error as Error);
   }
 };

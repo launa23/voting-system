@@ -12,8 +12,9 @@ import {
   UpdateCommand,
   DeleteCommand 
 } from "@aws-sdk/lib-dynamodb";
-import { TABLE_NAMES } from "../../shared/utils/constants.mjs";
-import { voteRepository } from "./VoteRepository.mjs";
+import { TABLE_NAMES } from "../../shared/utils/constants.js";
+import { voteRepository } from "./VoteRepository.js";
+import { Candidate, VoteResult } from "../models/types.js";
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
@@ -21,53 +22,45 @@ const docClient = DynamoDBDocumentClient.from(client);
 export class CandidateRepository {
   /**
    * Get all candidates
-   * @returns {Promise<Array>}
    */
-  async getAllCandidates() {
+  async getAllCandidates(): Promise<Omit<Candidate, 'votes'>[]> {
     const result = await docClient.send(new ScanCommand({
       TableName: TABLE_NAMES.CANDIDATES
     }));
     
-    return result.Items || [];
+    return (result.Items || []) as Omit<Candidate, 'votes'>[];
   }
 
   /**
    * Get all vote results (aggregated from sharded writes)
-   * @returns {Promise<Array>}
    */
-  async getAllVoteResults() {
+  async getAllVoteResults(): Promise<VoteResult[]> {
     return await voteRepository.getAllVoteResults();
   }
 
   /**
    * Get a single candidate by ID
-   * @param {string} candidateId 
-   * @returns {Promise<Object|null>}
    */
-  async getCandidateById(candidateId) {
+  async getCandidateById(candidateId: string): Promise<Omit<Candidate, 'votes'> | null> {
     const result = await docClient.send(new GetCommand({
       TableName: TABLE_NAMES.CANDIDATES,
       Key: { CandidateId: candidateId }
     }));
     
-    return result.Item || null;
+    return (result.Item as Omit<Candidate, 'votes'>) || null;
   }
 
   /**
    * Get vote count for a candidate (aggregated from sharded writes)
-   * @param {string} candidateId 
-   * @returns {Promise<number>}
    */
-  async getVoteCount(candidateId) {
+  async getVoteCount(candidateId: string): Promise<number> {
     return await voteRepository.getVoteCount(candidateId);
   }
 
   /**
    * Create a new candidate
-   * @param {Object} candidate 
-   * @returns {Promise<Object>}
    */
-  async createCandidate(candidate) {
+  async createCandidate(candidate: Omit<Candidate, 'votes'>): Promise<Omit<Candidate, 'votes'>> {
     await docClient.send(new PutCommand({
       TableName: TABLE_NAMES.CANDIDATES,
       Item: candidate
@@ -78,14 +71,14 @@ export class CandidateRepository {
 
   /**
    * Update an existing candidate
-   * @param {string} candidateId 
-   * @param {Object} updates 
-   * @returns {Promise<Object>}
    */
-  async updateCandidate(candidateId, updates) {
-    const updateExpressions = [];
-    const expressionAttributeNames = {};
-    const expressionAttributeValues = {};
+  async updateCandidate(
+    candidateId: string, 
+    updates: Partial<Omit<Candidate, 'CandidateId' | 'votes'>>
+  ): Promise<Omit<Candidate, 'votes'>> {
+    const updateExpressions: string[] = [];
+    const expressionAttributeNames: Record<string, string> = {};
+    const expressionAttributeValues: Record<string, unknown> = {};
     
     Object.entries(updates).forEach(([key, value], index) => {
       updateExpressions.push(`#field${index} = :value${index}`);
@@ -102,14 +95,13 @@ export class CandidateRepository {
       ReturnValues: "ALL_NEW"
     }));
     
-    return result.Attributes;
+    return result.Attributes as Omit<Candidate, 'votes'>;
   }
 
   /**
    * Delete a candidate
-   * @param {string} candidateId 
    */
-  async deleteCandidate(candidateId) {
+  async deleteCandidate(candidateId: string): Promise<void> {
     await docClient.send(new DeleteCommand({
       TableName: TABLE_NAMES.CANDIDATES,
       Key: { CandidateId: candidateId }

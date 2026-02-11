@@ -5,9 +5,10 @@
  * THIS IS A THIN HANDLER - Business logic is in VoteService
  */
 
-import { voteService } from "../../core/services/VoteService.mjs";
+import { SQSEvent, SQSBatchResponse } from "../../core/models/types.js";
+import { voteService } from "../../core/services/VoteService.js";
 
-export const handler = async (event) => {
+export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
   try {
     // Process batch of votes from SQS
     const batchItemFailures = await voteService.processBatchVotes(event.Records);

@@ -5,23 +5,30 @@
 
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { ValidationError } from "../../shared/utils/response.mjs";
-import { S3_CONFIG } from "../../shared/utils/constants.mjs";
+import { ValidationError } from "../../shared/utils/response.js";
+import { S3_CONFIG } from "../../shared/utils/constants.js";
+import { UploadUrlResponse } from "../models/types.js";
 
 const s3Client = new S3Client({});
 
+interface UploadUrlResponseExtended extends UploadUrlResponse {
+  expiresIn: number;
+}
+
 export class UploadService {
+  private bucketName: string;
+
   constructor() {
-    this.bucketName = process.env.BUCKET_NAME;
+    this.bucketName = process.env.BUCKET_NAME || '';
   }
 
   /**
    * Generate pre-signed URL for file upload
-   * @param {string} fileName 
-   * @param {string} [fileType='image/jpeg'] 
-   * @returns {Promise<Object>}
    */
-  async generateUploadUrl(fileName, fileType = 'image/jpeg') {
+  async generateUploadUrl(
+    fileName: string, 
+    fileType = 'image/jpeg'
+  ): Promise<UploadUrlResponseExtended> {
     if (!fileName) {
       throw new ValidationError('fileName is required');
     }
@@ -55,10 +62,8 @@ export class UploadService {
 
   /**
    * Validate file type
-   * @param {string} fileType 
-   * @returns {boolean}
    */
-  isValidFileType(fileType) {
+  isValidFileType(fileType: string): boolean {
     const allowedTypes = [
       'image/jpeg',
       'image/jpg',

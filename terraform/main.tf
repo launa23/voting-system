@@ -169,10 +169,10 @@ resource "aws_iam_role_policy_attachment" "lambda_cognito" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonCognitoPowerUser"
 }
 
-# Zip code Node.js
+# Zip code Node.js (compiled TypeScript output)
 data "archive_file" "lambda_zip" {
   type        = "zip"
-  source_dir  = "${path.module}/../src"
+  source_dir  = "${path.module}/../dist"
   output_path = "${path.module}/payload.zip"
 }
 

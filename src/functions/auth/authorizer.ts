@@ -7,7 +7,19 @@
 
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 
-export const handler = async (event) => {
+interface AuthorizerEvent {
+  headers?: Record<string, string>;
+}
+
+interface AuthorizerResponse {
+  isAuthorized: boolean;
+  context?: {
+    userId: string;
+    email: string;
+  };
+}
+
+export const handler = async (event: AuthorizerEvent): Promise<AuthorizerResponse> => {
   console.log('Auth event:', JSON.stringify(event, null, 2));
   
   try {
@@ -30,9 +42,9 @@ export const handler = async (event) => {
 
     // Create verifier for Cognito ID tokens
     const verifier = CognitoJwtVerifier.create({
-      userPoolId: process.env.COGNITO_USER_POOL_ID,
+      userPoolId: process.env.COGNITO_USER_POOL_ID!,
       tokenUse: "id",
-      clientId: process.env.COGNITO_CLIENT_ID,
+      clientId: process.env.COGNITO_CLIENT_ID!,
     });
 
     // Verify the token
@@ -43,8 +55,8 @@ export const handler = async (event) => {
     return {
       isAuthorized: true,
       context: {
-        userId: payload.sub,
-        email: payload.email,
+        userId: payload.sub as string,
+        email: payload.email as string,
       }
     };
     
