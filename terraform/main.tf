@@ -172,7 +172,7 @@ resource "aws_iam_role_policy_attachment" "lambda_cognito" {
 # Zip code Node.js
 data "archive_file" "lambda_zip" {
   type        = "zip"
-  source_file = "${path.module}/../lambda/index.mjs"
+  source_dir  = "${path.module}/../src"
   output_path = "${path.module}/payload.zip"
 }
 
@@ -181,7 +181,7 @@ resource "aws_lambda_function" "vote_worker" {
   filename         = data.archive_file.lambda_zip.output_path
   function_name    = "VoteWorker"
   role             = aws_iam_role.lambda_role.arn
-  handler          = "index.handler"
+  handler          = "functions/vote/voteWorker.handler"  # ← Changed
   runtime          = "nodejs20.x"
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
   timeout          = 10
@@ -253,21 +253,14 @@ resource "aws_cognito_user_pool_client" "client" {
 # 5. LAMBDA AUTHORIZER (COGNITO JWT VALIDATOR)
 # ==============================================================================
 
-# Zip code Auth (Cognito JWT Validator)
-data "archive_file" "auth_zip" {
-  type        = "zip"
-  source_file = "${path.module}/../lambda/auth.mjs"
-  output_path = "${path.module}/auth.zip"
-}
-
-# Tạo hàm Lambda Auth
+# Dùng chung source_dir với các Lambda khác
 resource "aws_lambda_function" "auth_func" {
-  filename         = data.archive_file.auth_zip.output_path
+  filename         = data.archive_file.lambda_zip.output_path
   function_name    = "CognitoJWTAuth"
   role             = aws_iam_role.lambda_role.arn
-  handler          = "auth.handler"
+  handler          = "functions/auth/authorizer.handler"
   runtime          = "nodejs20.x"
-  source_code_hash = data.archive_file.auth_zip.output_base64sha256
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
   
   environment {
     variables = {
@@ -290,21 +283,14 @@ resource "aws_lambda_permission" "api_gw_invoke_auth" {
 # 6. LAMBDA LOGIN MANAGER (AUTHENTICATION)
 # ==============================================================================
 
-# Zip code Login
-data "archive_file" "login_zip" {
-  type        = "zip"
-  source_file = "${path.module}/../lambda/login.mjs"
-  output_path = "${path.module}/login.zip"
-}
-
 # Tạo hàm Lambda Login
 resource "aws_lambda_function" "login_func" {
-  filename         = data.archive_file.login_zip.output_path
+  filename         = data.archive_file.lambda_zip.output_path
   function_name    = "AuthenticationManager"
   role             = aws_iam_role.lambda_role.arn
-  handler          = "login.handler"
+  handler          = "functions/auth/authentication.handler"  # ← Changed
   runtime          = "nodejs20.x"
-  source_code_hash = data.archive_file.login_zip.output_base64sha256
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
   timeout          = 10
   
   environment {
@@ -328,21 +314,14 @@ resource "aws_lambda_permission" "api_gw_invoke_login" {
 # 7. LAMBDA USER INFO MANAGER
 # ==============================================================================
 
-# Zip code User Info
-data "archive_file" "user_zip" {
-  type        = "zip"
-  source_file = "${path.module}/../lambda/user.mjs"
-  output_path = "${path.module}/user.zip"
-}
-
 # Tạo hàm Lambda User Info
 resource "aws_lambda_function" "user_func" {
-  filename         = data.archive_file.user_zip.output_path
+  filename         = data.archive_file.lambda_zip.output_path
   function_name    = "UserInfoManager"
   role             = aws_iam_role.lambda_role.arn
-  handler          = "user.handler"
+  handler          = "functions/user/userInfo.handler"  # ← Changed
   runtime          = "nodejs20.x"
-  source_code_hash = data.archive_file.user_zip.output_base64sha256
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
   timeout          = 10
 }
 
@@ -359,21 +338,14 @@ resource "aws_lambda_permission" "api_gw_invoke_user" {
 # 8. LAMBDA CANDIDATES MANAGER
 # ==============================================================================
 
-# Zip code Candidates
-data "archive_file" "candidates_zip" {
-  type        = "zip"
-  source_file = "${path.module}/../lambda/candidates.mjs"
-  output_path = "${path.module}/candidates.zip"
-}
-
 # Tạo hàm Lambda Candidates
 resource "aws_lambda_function" "candidates_func" {
-  filename         = data.archive_file.candidates_zip.output_path
+  filename         = data.archive_file.lambda_zip.output_path
   function_name    = "CandidatesManager"
   role             = aws_iam_role.lambda_role.arn
-  handler          = "candidates.handler"
+  handler          = "functions/candidates/candidates.handler"  # ← Changed
   runtime          = "nodejs20.x"
-  source_code_hash = data.archive_file.candidates_zip.output_base64sha256
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
   timeout          = 10
 }
 
@@ -390,21 +362,14 @@ resource "aws_lambda_permission" "api_gw_invoke_candidates" {
 # 9. LAMBDA UPLOAD MANAGER
 # ==============================================================================
 
-# Zip code Upload
-data "archive_file" "upload_zip" {
-  type        = "zip"
-  source_file = "${path.module}/../lambda/upload.mjs"
-  output_path = "${path.module}/upload.zip"
-}
-
 # Tạo hàm Lambda Upload
 resource "aws_lambda_function" "upload_func" {
-  filename         = data.archive_file.upload_zip.output_path
+  filename         = data.archive_file.lambda_zip.output_path
   function_name    = "UploadManager"
   role             = aws_iam_role.lambda_role.arn
-  handler          = "upload.handler"
+  handler          = "functions/upload/upload.handler"  # ← Changed
   runtime          = "nodejs20.x"
-  source_code_hash = data.archive_file.upload_zip.output_base64sha256
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
   timeout          = 10
   
   environment {
