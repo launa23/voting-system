@@ -21,9 +21,9 @@ provider "aws" {
 # ==============================================================================
 resource "aws_dynamodb_table" "vote_results" {
   name           = "VoteResults"
-  billing_mode   = "PROVISIONED"
-  read_capacity  = 5
-  write_capacity = 100 # Tăng lên 2000-5000 khi bắt đầu Stress Test
+  # billing_mode   = "PAY_PER_REQUEST"
+  read_capacity  = 10
+  write_capacity = 10000 # Tăng lên 2000-5000 khi bắt đầu Stress Test
   hash_key       = "CandidateId"
 
   attribute {
@@ -34,9 +34,9 @@ resource "aws_dynamodb_table" "vote_results" {
 
 resource "aws_dynamodb_table" "user_vote_history" {
   name           = "UserVoteHistory"
-  billing_mode   = "PROVISIONED"
-  read_capacity  = 5
-  write_capacity = 100 # Tăng lên 2000-5000 khi bắt đầu Stress Test
+  # billing_mode   = "PAY_PER_REQUEST"
+  read_capacity  = 10
+  write_capacity = 10000 # Tăng lên 2000-5000 khi bắt đầu Stress Test
   hash_key       = "UserId"
 
   attribute {
@@ -108,10 +108,24 @@ data "aws_caller_identity" "current" {}
 # ==============================================================================
 # 3. SQS QUEUE
 # ==============================================================================
+# Dead Letter Queue - lưu message thất bại
+resource "aws_sqs_queue" "vote_dlq" {
+  name                      = "vote-dlq"
+  message_retention_seconds = 1209600 # 14 ngày
+  visibility_timeout_seconds = 30
+}
+
+# Main Queue với DLQ
 resource "aws_sqs_queue" "vote_queue" {
   name                      = "vote-queue"
   message_retention_seconds = 3600 # 1 giờ (cho sạch)
   visibility_timeout_seconds = 30
+  
+  # Sau 10 lần thất bại -> chuyển sang DLQ
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.vote_dlq.arn
+    maxReceiveCount     = 10
+  })
 }
 
 # ==============================================================================
@@ -179,6 +193,9 @@ resource "aws_lambda_event_source_mapping" "sqs_trigger" {
   function_name    = aws_lambda_function.vote_worker.arn
   batch_size       = 100
   maximum_batching_window_in_seconds = 1
+  
+  # Enable partial batch failure - chỉ retry message thất bại
+  function_response_types = ["ReportBatchItemFailures"]
 }
 
 # ==============================================================================

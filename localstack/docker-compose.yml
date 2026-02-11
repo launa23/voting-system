@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  localstack:
+    container_name: voting-localstack
+    image: localstack/localstack:latest
+    ports:
+      - "4566:4566"            # LocalStack Gateway
+      - "4510-4559:4510-4559"  # External services port range
+    environment:
+      # Services to enable
+      - SERVICES=s3,sqs,lambda,dynamodb,apigateway,cognito-idp,iam,sts
+      - DEBUG=1
+      - LAMBDA_EXECUTOR=docker
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - LAMBDA_RUNTIME_ENVIRONMENT_TIMEOUT=60
+      # Enable persistence
+      - PERSISTENCE=1
+      # AWS region
+      - DEFAULT_REGION=ap-southeast-1
+      # Disable telemetry
+      - DISABLE_EVENTS=1
+    volumes:
+      - "./volume:/var/lib/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    networks:
+      - voting-network
+
+networks:
+  voting-network:
+    driver: bridge

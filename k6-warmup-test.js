@@ -1,0 +1,116 @@
+// k6-warmup-test.js
+// Warm-up Test - Khởi động hệ thống và làm ấm Lambda
+// 
+// PURPOSE:
+//   - Khởi động Lambda functions (giảm cold starts)
+//   - Warm up DynamoDB auto-scaling
+//   - Verify API connectivity
+//   - Establish baseline performance
+//
+// USAGE:
+//   k6 run k6-warmup-test.js
+//
+// DURATION: 5 phút
+//
+// SYSTEM CONFIG:
+//   - DynamoDB WCU: 10,000
+//   - Lambda Concurrent: 1,000
+//
+// EXPECTED RESULTS:
+//   - Throughput: 500-2,000 req/s
+//   - p95 latency: 50-200ms (higher due to cold starts)
+//   - Error rate: <1%
+//   - All Lambda functions warmed up
+
+import http from 'k6/http';
+import { check } from 'k6';
+import { Rate, Counter } from 'k6/metrics';
+
+const voteSuccessRate = new Rate('vote_success_rate');
+const failedVotes = new Counter('failed_votes');
+
+const API_ENDPOINT = __ENV.API_ENDPOINT || 'https://1qfkkq344f.execute-api.ap-southeast-1.amazonaws.com';
+const CLOUDFRONT_URL = __ENV.CLOUDFRONT_URL || 'https://d2us8duxzztzs0.cloudfront.net/candidates.json';
+const AUTH_TOKEN = __ENV.AUTH_TOKEN || 'eyJraWQiOiJ5Mnd4bnVMQU00cE9uTjY0SDJRaHdCRVoyZG4wUFVCWlZDWllaZ09rUjhBPSIsImFsZyI6IlJTMjU2In0.eyJzdWIiOiJkOWZhNDUyYy0zMGIxLTcwZTktODIyOS0xOTc4MGE0MTY4YjYiLCJpc3MiOiJodHRwczpcL1wvY29nbml0by1pZHAuYXAtc291dGhlYXN0LTEuYW1hem9uYXdzLmNvbVwvYXAtc291dGhlYXN0LTFfcGJqdnpqN0FNIiwiY2xpZW50X2lkIjoiM2w5MmE4Mm8xcHFmc2RkNHRwOTVlNnAycTUiLCJvcmlnaW5fanRpIjoiZjNmYTljMDEtODE4Yi00MWRkLTg3NDMtYWFjNTA4YTUyYmRjIiwiZXZlbnRfaWQiOiIwYzg2ZjRkMS04MDFiLTQxZWEtYTdjMS1hMDVmYjRlMTEzOTAiLCJ0b2tlbl91c2UiOiJhY2Nlc3MiLCJzY29wZSI6ImF3cy5jb2duaXRvLnNpZ25pbi51c2VyLmFkbWluIiwiYXV0aF90aW1lIjoxNzcwMzQxOTE2LCJleHAiOjE3NzA0MjgzMTYsImlhdCI6MTc3MDM0MTkxNiwianRpIjoiY2E0OTMzYjItYWFhZC00MDA2LTk4YjAtMThhNDQ3YjU5MmQyIiwidXNlcm5hbWUiOiJkOWZhNDUyYy0zMGIxLTcwZTktODIyOS0xOTc4MGE0MTY4YjYifQ.ajJjzNKQhaw8dmZuVOSo8diL2MreprZ0VJtDEyrBK_8DVKLOeGfKSsI-FPTsQyNHF3Mai_4U6aPkFIDJdEPuVptv_grLbQArlxedtxTAWqXW9u9ryewNjo60-3zpt8b0jux64y8UWEzNhfWc6StWFu0_SXwmnb-qu4DDqC5r9ut6udJRWhkeQQ2TBhJ5X6MG7ovBYKru9Y97eKwcK3UXBDGFtAJcSQ4ze5RMqAIE0bwtNgp4NKnnAQT6Ee4TkzAa1s12e50tzeKPb9lSjebKGPW5-k5BTydgdINf0LIbNeqHctFY4Bbxnn6IQeCbZEdFs-kONyRmY9058O2J5y4sLQ';
+const CANDIDATE_IDS = ['cand1', 'cand2', 'cand3', 'cand4'];
+
+export const options = {
+  scenarios: {
+    warmup: {
+      executor: 'ramping-vus',
+      startVUs: 0,
+      stages: [
+        { duration: '1m', target: 50 },    // Ramp up slowly
+        { duration: '2m', target: 150 },   // Increase gradually
+        { duration: '1m', target: 200 },   // Peak warmup load
+        { duration: '1m', target: 0 },     // Ramp down
+      ],
+      gracefulRampDown: '30s',
+      exec: 'warmupScenario',
+    },
+  },
+  
+  thresholds: {
+    'http_req_duration': ['p(95)<1000'],  // Relaxed for cold starts
+    'http_req_failed': ['rate<0.01'],
+    'vote_success_rate': ['rate>0.95'],
+  },
+};
+
+let userCounter = 0;
+
+function generateUserId() {
+  return `warmup-u${++userCounter}-${Date.now()}`;
+}
+
+function getRandomCandidateId() {
+  return CANDIDATE_IDS[Math.floor(Math.random() * CANDIDATE_IDS.length)];
+}
+
+export function warmupScenario() {
+  const userId = generateUserId();
+  const candidateId = getRandomCandidateId();
+  
+  const res = http.post(
+    `${API_ENDPOINT}/vote`,
+    `{"userId":"${userId}","candidateId":"${candidateId}"}`,
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${AUTH_TOKEN}`,
+      },
+    }
+  );
+  
+  const success = res.status === 200;
+  voteSuccessRate.add(success);
+  
+  if (!success && res.status !== 403) {
+    failedVotes.add(1);
+  }
+}
+
+export function setup() {
+  console.log('\n' + '='.repeat(70));
+  console.log('🔥 WARM-UP TEST - Lambda & DynamoDB Initialization');
+  console.log('='.repeat(70));
+  console.log('Duration: 5 minutes');
+  console.log('Purpose: Eliminate cold starts, warm up auto-scaling');
+  console.log('='.repeat(70) + '\n');
+  
+  const res = http.get(`${API_ENDPOINT}/candidates`);
+  if (res.status !== 200) {
+    throw new Error(`API not accessible: ${res.status}`);
+  }
+  console.log('✅ API Ready\n');
+  
+  return { startTime: Date.now() };
+}
+
+export function teardown(data) {
+  const duration = ((Date.now() - data.startTime) / 1000 / 60).toFixed(1);
+  console.log('\n' + '='.repeat(70));
+  console.log(`✅ WARM-UP COMPLETED - Duration: ${duration} minutes`);
+  console.log('🚀 System is ready for load testing');
+  console.log('='.repeat(70) + '\n');
+}

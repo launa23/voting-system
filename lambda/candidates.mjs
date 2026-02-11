@@ -15,6 +15,11 @@ const docClient = DynamoDBDocumentClient.from(client);
 const TABLE_NAME = "Candidates";
 const VOTE_RESULTS_TABLE = "VoteResults";
 
+// In-memory cache
+let candidatesCache = null;
+let cacheTimestamp = 0;
+const CACHE_TTL = 5000; // 5 seconds (điều chỉnh theo nhu cầu)
+
 export const handler = async (event) => {
   // Payload format 2.0: httpMethod nằm trong requestContext
   const httpMethod = event.requestContext?.http?.method || event.httpMethod;
@@ -48,6 +53,16 @@ export const handler = async (event) => {
 
 // Lấy danh sách tất cả ứng viên
 async function listCandidates() {
+  const now = Date.now();
+  
+  // Sử dụng cache nếu còn hợp lệ
+  if (candidatesCache && (now - cacheTimestamp) < CACHE_TTL) {
+    console.log('Returning cached candidates');
+    return response(200, candidatesCache);
+  }
+  
+  console.log('Fetching fresh candidates from DynamoDB');
+  
   // Lấy danh sách ứng viên
   const candidatesResult = await docClient.send(new ScanCommand({
     TableName: TABLE_NAME
@@ -70,7 +85,12 @@ async function listCandidates() {
     votes: votesMap[candidate.CandidateId] || 0
   }));
   
-  return response(200, { candidates });
+  // Cập nhật cache
+  candidatesCache = { candidates };
+  cacheTimestamp = now;
+  
+  // Trả về response với Cache-Control header (5s)
+  return response(200, candidatesCache, "public, max-age=5");
 }
 
 // Lấy thông tin 1 ứng viên
@@ -166,13 +186,20 @@ async function deleteCandidate(id) {
 }
 
 // Helper tạo response
-function response(statusCode, body) {
+function response(statusCode, body, cacheControl = null) {
+  const headers = {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "*"
+  };
+  
+  // Thêm Cache-Control header nếu được chỉ định
+  if (cacheControl) {
+    headers["Cache-Control"] = cacheControl;
+  }
+  
   return {
     statusCode,
-    headers: {
-      "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*"
-    },
+    headers,
     body: JSON.stringify(body)
   };
 }
