@@ -172,34 +172,6 @@ curl -X POST https://<api-endpoint>/vote \
 
 ---
 
-## 🔄 Migration (Old → New Structure)
-
-If you have existing code in `lambda/` folder:
-
-### **Option 1: Automated Script**
-
-```powershell
-# Dry run (preview changes)
-.\migrate-terraform.ps1 -DryRun
-
-# Execute migration
-.\migrate-terraform.ps1
-```
-
-### **Option 2: Manual Migration**
-
-Follow step-by-step instructions in [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md)
-
-### **Deploy New Structure**
-
-```bash
-cd terraform
-terraform plan   # Review changes
-terraform apply  # Deploy
-```
-
----
-
 ## 📊 Load Testing
 
 ### Run Individual Tests
@@ -290,7 +262,6 @@ npm run lint:fix
 ## 📖 Documentation
 
 - **[PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)** - Detailed architecture and code organization
-- **[MIGRATION_GUIDE.md](MIGRATION_GUIDE.md)** - Step-by-step migration from old to new structure
 - **[LOAD_TESTING.md](LOAD_TESTING.md)** - Load testing guide and best practices
 - **[COST_ESTIMATION.md](COST_ESTIMATION.md)** - Comprehensive cost analysis
 - **[COST_MANAGEMENT_GUIDE.md](COST_MANAGEMENT_GUIDE.md)** - Quick cost optimization guide
