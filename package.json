@@ -4,7 +4,7 @@
   "description": "Serverless Voting System with DynamoDB, Lambda, and Cognito",
   "type": "module",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node -e \"require('fs').writeFileSync('dist/package.json', JSON.stringify({type:'module'},null,2))\"",
     "build:watch": "tsc --watch",
     "clean": "rimraf dist",
     "prebuild": "npm run clean",

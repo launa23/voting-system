@@ -33,7 +33,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     }
 
     const body = parseBody<AuthBody>(event);
-    const path = event.path;
+    const path = event.rawPath || event.path || '';
     
     // Route to appropriate service method
     if (path.includes('/login')) {

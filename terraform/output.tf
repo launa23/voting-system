@@ -50,3 +50,27 @@ output "cloudwatch_dashboard_url" {
   value       = "https://ap-southeast-1.console.aws.amazon.com/cloudwatch/home?region=ap-southeast-1#dashboards:name=${aws_cloudwatch_dashboard.voting_dashboard.dashboard_name}"
   description = "CloudWatch Dashboard URL - includes DLQ monitoring"
 }
+
+# DynamoDB Capacity Outputs
+output "dynamodb_billing_mode" {
+  value = {
+    VoteResults     = aws_dynamodb_table.vote_results.billing_mode
+    UserVoteHistory = aws_dynamodb_table.user_vote_history.billing_mode
+    Candidates      = aws_dynamodb_table.candidates.billing_mode
+  }
+  description = "DynamoDB billing mode for each table"
+}
+
+output "dynamodb_autoscaling_config" {
+  value = {
+    VoteResults_Write = {
+      min_capacity = aws_appautoscaling_target.vote_results_write.min_capacity
+      max_capacity = aws_appautoscaling_target.vote_results_write.max_capacity
+    }
+    UserVoteHistory_Write = {
+      min_capacity = aws_appautoscaling_target.user_vote_history_write.min_capacity
+      max_capacity = aws_appautoscaling_target.user_vote_history_write.max_capacity
+    }
+  }
+  description = "DynamoDB auto-scaling configuration (write capacity range)"
+}

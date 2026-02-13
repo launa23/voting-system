@@ -4,8 +4,8 @@
  */
 
 // API Configuration
-const API_ENDPOINT = 'https://f8rpo1hjn2.execute-api.ap-southeast-1.amazonaws.com'; // Thay bằng API endpoint của bạn
-const CLOUDFRONT_URL = 'https://d3vvv7egqrgahj.cloudfront.net/candidates.json'; // Thay bằng CloudFront URL của bạn
+const API_ENDPOINT = 'https://gsc0p9az45.execute-api.ap-southeast-1.amazonaws.com'; // Thay bằng API endpoint của bạn
+const CLOUDFRONT_URL = 'https://d1k9m728ox4w8w.cloudfront.net/candidates.json'; // Thay bằng CloudFront URL của bạn
 const API_TOKEN = 'Bearer SUPER_SECRET_MASTER_KEY_2026';
 
 // State

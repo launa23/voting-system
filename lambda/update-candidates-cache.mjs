@@ -30,10 +30,12 @@ export const handler = async (event) => {
       TableName: VOTE_RESULTS_TABLE
     }));
     
-    // Tạo map votes
+    // Tạo map votes - AGGREGATE shards
     const votesMap = {};
     (voteResult.Items || []).forEach(item => {
-      votesMap[item.CandidateId] = item.votes || 0;
+      // Extract base candidate ID (for sharded writes: candidateId#SHARD_0 -> candidateId)
+      const baseCandidateId = item.baseCandidateId || item.CandidateId.split('#')[0];
+      votesMap[baseCandidateId] = (votesMap[baseCandidateId] || 0) + (item.votes || 0);
     });
     
     // Gắn số votes vào từng ứng viên

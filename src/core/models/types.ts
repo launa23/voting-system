@@ -59,6 +59,7 @@ export interface APIGatewayProxyEvent {
   headers: Record<string, string>;
   httpMethod: string;
   path: string;
+  rawPath?: string; // HTTP API v2
   pathParameters: Record<string, string> | null;
   queryStringParameters: Record<string, string> | null;
   requestContext: {

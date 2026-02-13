@@ -21,27 +21,37 @@ provider "aws" {
 # ==============================================================================
 resource "aws_dynamodb_table" "vote_results" {
   name           = "VoteResults"
-  # billing_mode   = "PAY_PER_REQUEST"
-  read_capacity  = 10
-  write_capacity = 10000 # Tăng lên 2000-5000 khi bắt đầu Stress Test
+  billing_mode   = "PROVISIONED"
+  read_capacity  = 50
+  write_capacity = 20000
   hash_key       = "CandidateId"
 
   attribute {
     name = "CandidateId"
     type = "S"
   }
+
+  # Auto-scaling sẽ quản lý capacity → ignore changes từ Terraform
+  lifecycle {
+    ignore_changes = [read_capacity, write_capacity]
+  }
 }
 
 resource "aws_dynamodb_table" "user_vote_history" {
   name           = "UserVoteHistory"
-  # billing_mode   = "PAY_PER_REQUEST"
-  read_capacity  = 10
-  write_capacity = 10000 # Tăng lên 2000-5000 khi bắt đầu Stress Test
+  billing_mode   = "PROVISIONED"
+  read_capacity  = 50
+  write_capacity = 20000
   hash_key       = "UserId"
 
   attribute {
     name = "UserId"
     type = "S"
+  }
+
+  # Auto-scaling sẽ quản lý capacity → ignore changes từ Terraform
+  lifecycle {
+    ignore_changes = [read_capacity, write_capacity]
   }
 }
 
@@ -53,6 +63,117 @@ resource "aws_dynamodb_table" "candidates" {
   attribute {
     name = "CandidateId"
     type = "S"
+  }
+}
+
+# ==============================================================================
+# 1b. DYNAMODB AUTO-SCALING
+# ==============================================================================
+# Auto-scaling cho VoteResults và UserVoteHistory tables
+# Scale range: Write 2,000 - 15,000 WCU | Read 10 - 500 RCU
+# Target utilization: 70% → scale up khi vượt 70%, scale down khi dưới 70%
+
+# --- VoteResults: Write Auto-scaling ---
+resource "aws_appautoscaling_target" "vote_results_write" {
+  max_capacity       = 30000
+  min_capacity       = 2000
+  resource_id        = "table/${aws_dynamodb_table.vote_results.name}"
+  scalable_dimension = "dynamodb:table:WriteCapacityUnits"
+  service_namespace  = "dynamodb"
+}
+
+resource "aws_appautoscaling_policy" "vote_results_write" {
+  name               = "DynamoDBWriteCapacityUtilization:${aws_dynamodb_table.vote_results.name}"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.vote_results_write.resource_id
+  scalable_dimension = aws_appautoscaling_target.vote_results_write.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.vote_results_write.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "DynamoDBWriteCapacityUtilization"
+    }
+    target_value       = 70.0
+    scale_in_cooldown  = 60   # Chờ 60s trước khi scale down
+    scale_out_cooldown = 0    # Scale up ngay lập tức
+  }
+}
+
+# --- VoteResults: Read Auto-scaling ---
+resource "aws_appautoscaling_target" "vote_results_read" {
+  max_capacity       = 500
+  min_capacity       = 10
+  resource_id        = "table/${aws_dynamodb_table.vote_results.name}"
+  scalable_dimension = "dynamodb:table:ReadCapacityUnits"
+  service_namespace  = "dynamodb"
+}
+
+resource "aws_appautoscaling_policy" "vote_results_read" {
+  name               = "DynamoDBReadCapacityUtilization:${aws_dynamodb_table.vote_results.name}"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.vote_results_read.resource_id
+  scalable_dimension = aws_appautoscaling_target.vote_results_read.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.vote_results_read.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "DynamoDBReadCapacityUtilization"
+    }
+    target_value       = 70.0
+    scale_in_cooldown  = 60
+    scale_out_cooldown = 0
+  }
+}
+
+# --- UserVoteHistory: Write Auto-scaling ---
+resource "aws_appautoscaling_target" "user_vote_history_write" {
+  max_capacity       = 30000
+  min_capacity       = 2000
+  resource_id        = "table/${aws_dynamodb_table.user_vote_history.name}"
+  scalable_dimension = "dynamodb:table:WriteCapacityUnits"
+  service_namespace  = "dynamodb"
+}
+
+resource "aws_appautoscaling_policy" "user_vote_history_write" {
+  name               = "DynamoDBWriteCapacityUtilization:${aws_dynamodb_table.user_vote_history.name}"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.user_vote_history_write.resource_id
+  scalable_dimension = aws_appautoscaling_target.user_vote_history_write.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.user_vote_history_write.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "DynamoDBWriteCapacityUtilization"
+    }
+    target_value       = 70.0
+    scale_in_cooldown  = 60
+    scale_out_cooldown = 0
+  }
+}
+
+# --- UserVoteHistory: Read Auto-scaling ---
+resource "aws_appautoscaling_target" "user_vote_history_read" {
+  max_capacity       = 500
+  min_capacity       = 10
+  resource_id        = "table/${aws_dynamodb_table.user_vote_history.name}"
+  scalable_dimension = "dynamodb:table:ReadCapacityUnits"
+  service_namespace  = "dynamodb"
+}
+
+resource "aws_appautoscaling_policy" "user_vote_history_read" {
+  name               = "DynamoDBReadCapacityUtilization:${aws_dynamodb_table.user_vote_history.name}"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.user_vote_history_read.resource_id
+  scalable_dimension = aws_appautoscaling_target.user_vote_history_read.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.user_vote_history_read.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "DynamoDBReadCapacityUtilization"
+    }
+    target_value       = 70.0
+    scale_in_cooldown  = 60
+    scale_out_cooldown = 0
   }
 }
 
@@ -121,10 +242,10 @@ resource "aws_sqs_queue" "vote_queue" {
   message_retention_seconds = 3600 # 1 giờ (cho sạch)
   visibility_timeout_seconds = 30
   
-  # Sau 10 lần thất bại -> chuyển sang DLQ
+  # Sau 5 lần thất bại -> chuyển sang DLQ
   redrive_policy = jsonencode({
     deadLetterTargetArn = aws_sqs_queue.vote_dlq.arn
-    maxReceiveCount     = 10
+    maxReceiveCount     = 5
   })
 }
 
@@ -184,15 +305,24 @@ resource "aws_lambda_function" "vote_worker" {
   handler          = "functions/vote/voteWorker.handler"  # ← Changed
   runtime          = "nodejs20.x"
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
-  timeout          = 10
+  timeout          = 60  # Tăng từ 10s → 60s cho batch processing + retry
+  memory_size      = 512 # Tăng memory để xử lý nhanh hơn
+  
+  # Reserved concurrency để kiểm soát throughput
+  reserved_concurrent_executions = 1000  # Max 1000 concurrent executions
 }
 
-# Trigger: SQS -> Lambda (Batch Size 100)
+# Trigger: SQS -> Lambda (Optimized batch size)
 resource "aws_lambda_event_source_mapping" "sqs_trigger" {
   event_source_arn = aws_sqs_queue.vote_queue.arn
   function_name    = aws_lambda_function.vote_worker.arn
-  batch_size       = 100
-  maximum_batching_window_in_seconds = 1
+  batch_size       = 20  # Giảm từ 100 → 50 để tránh overwhelm DynamoDB  
+  maximum_batching_window_in_seconds = 1  # Tối đa chờ 1s để gom batch
+  
+  # Scaling configuration
+  scaling_config {
+    maximum_concurrency = 1000  # Match với reserved_concurrent_executions
+  }
   
   # Enable partial batch failure - chỉ retry message thất bại
   function_response_types = ["ReportBatchItemFailures"]
@@ -297,6 +427,7 @@ resource "aws_lambda_function" "login_func" {
     variables = {
       COGNITO_CLIENT_ID    = aws_cognito_user_pool_client.client.id
       COGNITO_USER_POOL_ID = aws_cognito_user_pool.pool.id
+      AUTO_CONFIRM_USER    = "true"
     }
   }
 }
